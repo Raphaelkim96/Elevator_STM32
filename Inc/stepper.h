@@ -23,7 +23,7 @@
 #define IN4_PIN             GPIO_PIN_13
 #define IN4_PORT            GPIOB
 
-static const uint8_t HALF_STEP_SEQ[8][4] =
+static const uint8_t HALF_STEP_SEQ[9][4] =
     {
         {1, 0, 0, 0},
         {1, 1, 0, 0},
@@ -33,6 +33,7 @@ static const uint8_t HALF_STEP_SEQ[8][4] =
         {0, 0, 1, 1},
         {0, 0, 0, 1},
         {1, 0, 0, 1},
+        {0, 0, 0, 0}
     };
 
 
@@ -40,6 +41,7 @@ void stepMotor(uint8_t step);
 
 void rotateSteps(uint16_t steps, uint8_t direction);
 void rotateDegree(uint16_t degrees, uint8_t direction);
+void rotate_infinite(uint8_t dir, uint8_t enable);
 
 
 
