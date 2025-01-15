@@ -31,7 +31,7 @@ void rotateSteps(uint16_t steps, uint8_t direction)
     }
     stepMotor(step);
 
-    delay_us(1000); // 각 스텝간 딜레이
+    delay_us(900); // 각 스텝간 딜레이
   }
 }
 
@@ -43,6 +43,27 @@ void rotateDegree(uint16_t degrees, uint8_t direction)
   rotateSteps(steps, direction);
 
 }
+
+void rotate_infinite(uint8_t dir, uint8_t enable){
+  static uint8_t i;
+  if ( enable == 0 ) {
+    i = 0;
+    stepMotor(8); // Stop
+    return;
+  }
+  else {
+    if(dir == DIR_CW) { // Clockwise
+      stepMotor( i % 8 ); // 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, ...
+    }
+    else { // Counter Clockwise
+      stepMotor(7 - (i % 8) ); // 7, 6, 5, 4, 3, 2, 1, 0, 7, 6, 5, ...
+    }
+    i++;
+    //osDelay(1);
+  }
+  return;
+}
+
 
 
 

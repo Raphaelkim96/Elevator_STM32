@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "i2c.h"
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
@@ -26,7 +27,10 @@
 /* USER CODE BEGIN Includes */
 
 #include "stepper.h"
-
+#include "button.h"
+#include "I2C_LCD.h"
+#include "led.h"
+#include "buzzer.h"
 
 /* USER CODE END Includes */
 
@@ -37,6 +41,19 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define STATE_IDLE    0
+#define STATE_FLOOR1  1
+#define STATE_FLOOR2  2
+#define STATE_FLOOR3  3
+#define STATE_UP      4
+#define STATE_DOWN    5
+#define STATE_ARRIVED 6
+
+#define PHOTO_1     GPIO_PIN_2
+#define PHOTO_2     GPIO_PIN_10
+#define PHOTO_3     GPIO_PIN_11
+
+
 
 /* USER CODE END PD */
 
@@ -49,11 +66,109 @@
 
 /* USER CODE BEGIN PV */
 
+volatile int current_floor = 1;  // 현재 층
+volatile int target_floor = 1;   // 목표 층
+volatile int is_moving = 0;      // 이동 중 여부
+uint8_t flag = 0;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+  if (GPIO_Pin == PHOTO_1)
+  {
+      current_floor = 1;
+
+      if (target_floor == 1) {
+          is_moving = 0;
+
+
+          stepMotor(8); // 모터정지
+          //playNote(Do, 200);
+
+
+
+      }
+  }
+  else if (GPIO_Pin == PHOTO_2)
+  {
+      current_floor = 2;
+
+      if (target_floor == 2) {
+          is_moving = 0;
+          //2층 도착 lcd
+
+
+
+
+          stepMotor(8); // 모터정지
+          //playNote(Do, 200);
+
+
+      }
+  }
+  else if (GPIO_Pin == PHOTO_3)
+  {
+      current_floor = 3;
+
+      if (target_floor == 3) {
+          is_moving = 0;
+          //3층 도착 lcd
+
+
+          stepMotor(8);
+          //playNote(Do, 200);
+
+
+      }
+  }
+
+}
+
+
+void moveElevator(void)
+{
+  if (current_floor == target_floor)
+  {
+    is_moving = 0;
+//    stepMotor(8);
+//    playNote(Si, 200);
+
+
+    return;
+  }
+
+  is_moving = 1;
+  flag =0;
+  playNote(Si, 200);
+  All_LED_Off();
+  Red_LED_On();
+  uint8_t direction = (target_floor > current_floor) ? DIR_CW : DIR_CCW;
+
+  //올라가는 lcd
+  if(direction == DIR_CW)
+  {
+    moveCursor(1, 0);
+    lcdString("Going Up           ");
+  }
+  else if(direction == DIR_CCW)
+  {
+    moveCursor(1, 0);
+    lcdString("Going Down         ");
+  }
+
+  //목표층에 도달할 때까지 스텝모터 구동
+
+  while(is_moving){
+    rotateDegree(1, direction);
+  }
+
+
+}
 
 /* USER CODE END PFP */
 
@@ -93,10 +208,24 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   MX_TIM11_Init();
+  MX_I2C1_Init();
+  MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
 
+  buzzerInit();
+  buttonInit();
+  lcdInit();
 
-  rotateDegree(450, DIR_CW);
+  HAL_Delay(200);
+
+  //초기화 층수
+  moveCursor(0, 0);
+  lcdString("1st Floor           ");
+  moveCursor(1, 0);
+  lcdString("Welcome!!           ");
+
+
+
 
 
   /* USER CODE END 2 */
@@ -105,6 +234,98 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+
+
+     //버튼 입력 확인
+    if (!is_moving)  // 엘리베이터가 멈춰있을 때만 버튼 입력 처리
+    {
+      //버튼 LCD
+      switch (current_floor) {
+        case 1:
+          if(!flag){
+          moveCursor(0, 0);
+          lcdString("1st Floor           ");
+          moveCursor(1, 0);
+          lcdString("Door Open           ");
+          HAL_Delay(1000);
+          flag =1;
+          }
+          else{
+          moveCursor(0, 0);
+          lcdString("1st Floor           ");
+          moveCursor(1, 0);
+          lcdString("Door Close           ");
+          HAL_Delay(1000);
+          }
+
+          break;
+        case 2:
+          if(!flag){
+          moveCursor(0, 0);
+          lcdString("2nd Floor           ");
+          moveCursor(1, 0);
+          lcdString("Door Open           ");
+          HAL_Delay(1000);
+          flag =1;
+          }
+          else{
+          moveCursor(0, 0);
+          lcdString("2nd Floor           ");
+          moveCursor(1, 0);
+          lcdString("Door Close           ");
+          HAL_Delay(1000);
+          }
+          break;
+        case 3:
+          if(!flag){
+          moveCursor(0, 0);
+          lcdString("3rd Floor           ");
+          moveCursor(1, 0);
+          lcdString("Door Open           ");
+          HAL_Delay(1000);
+          flag=1;
+          }
+          else{
+          moveCursor(0, 0);
+          lcdString("3rd Floor           ");
+          moveCursor(1, 0);
+          lcdString("Door Close           ");
+          HAL_Delay(1000);
+          }
+          break;
+        default:
+
+          break;
+      }
+
+      All_LED_Off();
+      Green_LED_On();
+
+
+      if (buttonGetPressed(0))
+      {
+        target_floor = 1;
+        moveElevator();
+        //rotateDegree(450, 1);
+      }
+      else if (buttonGetPressed(1))
+      {
+        target_floor = 2;
+        moveElevator();
+        //rotateDegree(450, 1);
+      }
+      else if (buttonGetPressed(2))
+      {
+        target_floor = 3;
+        moveElevator();
+        //rotateDegree(450, 1);
+      }
+    }
+
+    HAL_Delay(100);  // 디바운싱
+
+
+
 
     /* USER CODE END WHILE */
 
